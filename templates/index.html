@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Agenda Surat - HMPS PAI</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f9f9f9; }
+        h2 { text-align: center; color: #333; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: white; }
+        th, td { border: 1px solid black; padding: 10px; text-align: center; }
+        th { background-color: #f2f2f2; font-weight: bold; }
+        .form-container { background: #eef2f5; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ccc;}
+        .form-group { margin-bottom: 12px; display: flex; align-items: center; }
+        .form-group label { width: 150px; font-weight: bold; }
+        .form-group input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        .input-otomatis { background-color: #fff9c4; font-weight: bold; }
+        .btn-submit { padding: 12px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-submit:hover { background: #0056b3; }
+        .btn-hapus { background-color: #dc3545; color: white; padding: 6px 12px; text-decoration: none; border-radius: 4px; font-size: 14px; }
+        .btn-hapus:hover { background-color: #c82333; }
+        .btn-clear { background-color: #6c757d; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; font-weight: bold; float: right; margin-bottom: 10px;}
+        .mic-btn { background-color: #ff4d4d; color: white; border: none; padding: 10px 14px; margin-left: 10px; border-radius: 50%; cursor: pointer; font-size: 16px; transition: 0.3s; }
+        .mic-btn.listening { background-color: #4CAF50; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+    </style>
+</head>
+<body>
+
+    <h2>Buku Agenda Surat Keluar - HMPS PAI</h2>
+
+    <div class="form-container">
+        <form action="/tambah" method="POST">
+            <div class="form-group">
+                <label>No. Surat</label>
+                <input type="text" name="no_surat" id="no_surat" value="{{ no_otomatis }}" class="input-otomatis" required>
+            </div>
+            <div class="form-group">
+                <label>Alamat Surat</label>
+                <input type="text" name="alamat_surat" id="alamat_surat" required placeholder="Ketik atau gunakan suara...">
+                <button type="button" class="mic-btn" onclick="startVoice('alamat_surat', this)">🎤</button>
+            </div>
+            <div class="form-group">
+                <label>Tanggal Dibuat</label>
+                <input type="date" name="tgl_dibuat" required>
+            </div>
+            <div class="form-group">
+                <label>Tanggal Dikirim</label>
+                <input type="date" name="tgl_dikirim" required>
+            </div>
+            <div class="form-group">
+                <label>Perihal</label>
+                <input type="text" name="perihal" id="perihal" required placeholder="Ketik atau gunakan suara...">
+                <button type="button" class="mic-btn" onclick="startVoice('perihal', this)">🎤</button>
+            </div>
+            <button type="submit" class="btn-submit">Simpan Surat</button>
+        </form>
+        <small style="color:red; display:block; margin-top:10px;">*Kotak kuning (No. Surat) otomatis terisi, namun Anda bisa mengeditnya secara manual.</small>
+    </div>
+
+    {% if surat %}
+    <div style="overflow: hidden;">
+        <a href="/hapus_semua" class="btn-clear" onclick="return confirm('Yakin ingin menghapus SEMUA data?')">🗑️ Kosongkan Semua Tabel</a>
+    </div>
+    {% endif %}
+
+    <table>
+        <thead>
+            <tr>
+                <th rowspan="2">No</th>
+                <th rowspan="2">No. Surat</th>
+                <th rowspan="2">Alamat Surat</th>
+                <th colspan="2">Tanggal Surat</th>
+                <th rowspan="2">Perihal</th>
+                <th rowspan="2">Aksi</th>
+            </tr>
+            <tr>
+                <th>Dibuat</th>
+                <th>Dikirim</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in surat %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ row.no_surat }}</td>
+                <td>{{ row.alamat_surat }}</td>
+                <td>{{ row.tgl_dibuat }}</td>
+                <td>{{ row.tgl_dikirim }}</td>
+                <td>{{ row.perihal }}</td>
+                <td>
+                    <a href="/hapus/{{ row.id }}" class="btn-hapus" onclick="return confirm('Hapus surat ini?')">Hapus</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7" style="padding: 20px;">Belum ada data surat.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script>
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+        
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.lang = 'id-ID'; 
+            recognition.interimResults = false;
+        } else {
+            alert("Browser Anda tidak mendukung fitur suara. Gunakan Chrome/Edge.");
+        }
+
+        let activeButton = null;
+
+        function startVoice(inputId, btnElement) {
+            if (!recognition) return;
+            if (activeButton === btnElement) { recognition.stop(); return; }
+            if (activeButton) activeButton.classList.remove('listening');
+            
+            activeButton = btnElement;
+            activeButton.classList.add('listening');
+            activeButton.innerHTML = "⏹️"; 
+
+            recognition.start();
+
+            recognition.onresult = function(event) {
+                let transcript = event.results[0][0].transcript;
+                document.getElementById(inputId).value += transcript + " "; 
+            };
+
+            recognition.onerror = function() { resetMic(); };
+            recognition.onend = function() { resetMic(); };
+        }
+
+        function resetMic() {
+            if (activeButton) {
+                activeButton.classList.remove('listening');
+                activeButton.innerHTML = "🎤";
+                activeButton = null;
+            }
+        }
+    </script>
+</body>
+</html>
