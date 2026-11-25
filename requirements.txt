@@ -1,5 +1,6 @@
 Flask
 Flask-SQLAlchemy
-psycopg2-binary
+SQLAlchemy>=2.0
 python-dotenv
+psycopg[binary]
 gunicorn
